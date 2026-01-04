@@ -68,8 +68,9 @@ type API interface {
 }
 
 type Config struct {
-	RSSHubEndpoint string
-	LLM            string
+	RSSHubEndpoint  string
+	RSSHubAccessKey string
+	LLM             string
 }
 
 func (c *Config) Validate() error {
@@ -80,6 +81,7 @@ func (c *Config) Validate() error {
 
 func (c *Config) From(app *config.App) *Config {
 	c.RSSHubEndpoint = app.Scrape.RSSHubEndpoint
+	c.RSSHubAccessKey = app.Scrape.RSSHubAccessKey
 	c.LLM = app.API.LLM
 
 	return c
@@ -285,6 +287,17 @@ func (a *api) Reload(app *config.App) error {
 	return nil
 }
 
+// appendAccessKeyToURL adds the RSSHub access key to the URL if configured
+func (a *api) appendAccessKeyToURL(url string) string {
+	if a.Config().RSSHubAccessKey != "" {
+		if strings.Contains(url, "?") {
+			return url + "&key=" + a.Config().RSSHubAccessKey
+		}
+		return url + "?key=" + a.Config().RSSHubAccessKey
+	}
+	return url
+}
+
 func (a *api) QueryAppConfigSchema(
 	ctx context.Context,
 	req *QueryAppConfigSchemaRequest,
@@ -321,7 +334,7 @@ func (a *api) QueryRSSHubCategories(
 	ctx context.Context,
 	req *QueryRSSHubCategoriesRequest,
 ) (resp *QueryRSSHubCategoriesResponse, err error) {
-	url := a.Config().RSSHubEndpoint + "/api/namespace"
+	url := a.appendAccessKeyToURL(a.Config().RSSHubEndpoint + "/api/namespace")
 
 	// New request.
 	forwardReq, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
@@ -365,7 +378,7 @@ func (a *api) QueryRSSHubWebsites(
 		return nil, ErrBadRequest(errors.New("category is required"))
 	}
 
-	url := a.Config().RSSHubEndpoint + "/api/category/" + req.Category
+	url := a.appendAccessKeyToURL(a.Config().RSSHubEndpoint + "/api/category/" + req.Category)
 
 	// New request.
 	forwardReq, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
@@ -415,7 +428,7 @@ func (a *api) QueryRSSHubRoutes(
 		return nil, ErrBadRequest(errors.New("website id is required"))
 	}
 
-	url := a.Config().RSSHubEndpoint + "/api/namespace/" + req.WebsiteID
+	url := a.appendAccessKeyToURL(a.Config().RSSHubEndpoint + "/api/namespace/" + req.WebsiteID)
 
 	// New request.
 	forwardReq, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
