@@ -132,6 +132,7 @@ func new(instance string, app *config.App, dependencies Dependencies) (Server, e
 func registerTools(h *mcpserver.MCPServer, s *server) {
 	registerConfigTools(h, s)
 	registerRSSHubTools(h, s)
+	registerFeedSourceTools(h, s)
 
 	h.AddTool(mcp.NewTool("query",
 		mcp.WithDescription("Query feeds with semantic search. You can query any latest messages. "+
@@ -201,6 +202,26 @@ func registerRSSHubTools(h *mcpserver.MCPServer, s *server) {
 			mcp.Description("The RSS Hub website id. It can be found in the RSSHub websites list."),
 		),
 	), mcpserver.ToolHandlerFunc(s.queryRSSHubRoutes))
+}
+
+func registerFeedSourceTools(h *mcpserver.MCPServer, s *server) {
+	h.AddTool(mcp.NewTool("add_feed_source",
+		mcp.WithDescription("Add a new feed source to the app config. "+
+			"The source will be added to the scrape.sources list. "+
+			"You should confirm with the user before adding the source."),
+		mcp.WithString("name",
+			mcp.Required(),
+			mcp.Description("The name of the feed source. It must be unique."),
+		),
+		mcp.WithString("url",
+			mcp.Description("The direct RSS feed URL. e.g. https://tech.meituan.com/feed. "+
+				"Either url or rsshub_route_path must be provided, but not both."),
+		),
+		mcp.WithString("rsshub_route_path",
+			mcp.Description("The RSSHub route path. e.g. telegram/channel/zrj96. "+
+				"Either url or rsshub_route_path must be provided, but not both."),
+		),
+	), mcpserver.ToolHandlerFunc(s.addFeedSource))
 }
 
 // --- Implementation code block ---
@@ -332,6 +353,44 @@ func (s *server) queryRSSHubRoutes(ctx context.Context, req mcp.CallToolRequest)
 	b := runtimeutil.Must1(json.Marshal(apiResp))
 
 	return s.response(string(b)), nil
+}
+
+func (s *server) addFeedSource(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	// Parse arguments.
+	name, ok := req.Params.Arguments["name"].(string)
+	if !ok || name == "" {
+		return s.error(errors.New("name is required")), nil
+	}
+
+	url, _ := req.Params.Arguments["url"].(string)
+	rsshubRoutePath, _ := req.Params.Arguments["rsshub_route_path"].(string)
+
+	// Validate that either url or rsshub_route_path is provided.
+	if url == "" && rsshubRoutePath == "" {
+		return s.error(errors.New("either url or rsshub_route_path must be provided")), nil
+	}
+	if url != "" && rsshubRoutePath != "" {
+		return s.error(errors.New("url and rsshub_route_path cannot be set at the same time")), nil
+	}
+
+	// Build the source config.
+	source := config.ScrapeSource{
+		Name: name,
+		RSS:  &config.ScrapeSourceRSS{},
+	}
+	if url != "" {
+		source.RSS.URL = url
+	} else {
+		source.RSS.RSSHubRoutePath = rsshubRoutePath
+	}
+
+	// Forward request to API.
+	_, err := s.Dependencies().API.AddFeedSource(ctx, &api.AddFeedSourceRequest{Source: source})
+	if err != nil {
+		return s.error(errors.Wrap(err, "add feed source")), nil
+	}
+
+	return s.response("Feed source added successfully. The source name is: " + name), nil
 }
 
 func (s *server) query(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {

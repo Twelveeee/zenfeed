@@ -61,6 +61,8 @@ type API interface {
 	) (resp *QueryRSSHubWebsitesResponse, err error)
 	QueryRSSHubRoutes(ctx context.Context, req *QueryRSSHubRoutesRequest) (resp *QueryRSSHubRoutesResponse, err error)
 
+	AddFeedSource(ctx context.Context, req *AddFeedSourceRequest) (resp *AddFeedSourceResponse, err error)
+
 	Write(ctx context.Context, req *WriteRequest) (resp *WriteResponse, err error) // WARN: beta!!!
 	Query(ctx context.Context, req *QueryRequest) (resp *QueryResponse, err error)
 }
@@ -142,6 +144,12 @@ type RSSHubRoute struct {
 	Parameters  map[string]any `json:"parameters,omitempty"`
 	Features    map[string]any `json:"features,omitempty"`
 }
+
+type AddFeedSourceRequest struct {
+	Source config.ScrapeSource `json:"source"`
+}
+
+type AddFeedSourceResponse struct{}
 
 type WriteRequest struct { // Beta.
 	Feeds []*model.Feed `json:"feeds"`
@@ -447,6 +455,48 @@ func (a *api) QueryRSSHubRoutes(
 	return resp, nil
 }
 
+func (a *api) AddFeedSource(
+	ctx context.Context,
+	req *AddFeedSourceRequest,
+) (resp *AddFeedSourceResponse, err error) {
+	ctx = telemetry.StartWith(ctx, append(a.TelemetryLabels(), telemetrymodel.KeyOperation, "AddFeedSource")...)
+	defer func() { telemetry.End(ctx, err) }()
+
+	// Validate request.
+	if req.Source.Name == "" {
+		return nil, ErrBadRequest(errors.New("source name is required"))
+	}
+	if req.Source.RSS == nil {
+		return nil, ErrBadRequest(errors.New("rss config is required"))
+	}
+	if req.Source.RSS.URL == "" && req.Source.RSS.RSSHubRoutePath == "" {
+		return nil, ErrBadRequest(errors.New("either url or rsshub_route_path is required"))
+	}
+	if req.Source.RSS.URL != "" && req.Source.RSS.RSSHubRoutePath != "" {
+		return nil, ErrBadRequest(errors.New("url and rsshub_route_path cannot be set at the same time"))
+	}
+
+	// Get current config.
+	appConfig := a.Dependencies().ConfigManager.AppConfig()
+
+	// Check if source name already exists.
+	for _, source := range appConfig.Scrape.Sources {
+		if source.Name == req.Source.Name {
+			return nil, ErrBadRequest(errors.New("source name already exists"))
+		}
+	}
+
+	// Add new source.
+	appConfig.Scrape.Sources = append(appConfig.Scrape.Sources, req.Source)
+
+	// Save config.
+	if err := a.Dependencies().ConfigManager.SaveAppConfig(appConfig); err != nil {
+		return nil, ErrInternal(errors.Wrap(err, "save app config"))
+	}
+
+	return &AddFeedSourceResponse{}, nil
+}
+
 func (a *api) Write(ctx context.Context, req *WriteRequest) (resp *WriteResponse, err error) {
 	ctx = telemetry.StartWith(ctx, append(a.TelemetryLabels(), telemetrymodel.KeyOperation, "Write")...)
 	defer func() { telemetry.End(ctx, err) }()
@@ -582,6 +632,15 @@ func (m *mockAPI) QueryRSSHubRoutes(
 	args := m.Called(ctx, req)
 
 	return args.Get(0).(*QueryRSSHubRoutesResponse), args.Error(1)
+}
+
+func (m *mockAPI) AddFeedSource(
+	ctx context.Context,
+	req *AddFeedSourceRequest,
+) (resp *AddFeedSourceResponse, err error) {
+	args := m.Called(ctx, req)
+
+	return args.Get(0).(*AddFeedSourceResponse), args.Error(1)
 }
 
 func (m *mockAPI) Query(ctx context.Context, req *QueryRequest) (resp *QueryResponse, err error) {

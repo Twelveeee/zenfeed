@@ -95,6 +95,7 @@ func new(instance string, app *config.App, dependencies Dependencies) (Server, e
 	router.Handle("/query_rsshub_categories", jsonrpc.API(api.QueryRSSHubCategories))
 	router.Handle("/query_rsshub_websites", jsonrpc.API(api.QueryRSSHubWebsites))
 	router.Handle("/query_rsshub_routes", jsonrpc.API(api.QueryRSSHubRoutes))
+	router.Handle("/add_feed_source", jsonrpc.API(api.AddFeedSource))
 	router.Handle("/query", jsonrpc.API(api.Query))
 	httpServer := &http.Server{Addr: config.Address, Handler: router}
 
