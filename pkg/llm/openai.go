@@ -33,6 +33,7 @@ import (
 type openai struct {
 	*component.Base[Config, struct{}]
 	text
+	rateLimiter RateLimiter
 }
 
 func newOpenAI(c *Config) LLM {
@@ -47,13 +48,17 @@ func newOpenAI(c *Config) LLM {
 		Config:   c,
 	})
 
+	rateLimiter := NewRateLimiter(c.RPM)
+
 	return &openai{
 		Base: base,
 		text: &openaiText{
 			Base:             base,
 			client:           client,
 			embeddingSpliter: embeddingSpliter,
+			rateLimiter:      rateLimiter,
 		},
+		rateLimiter: rateLimiter,
 	}
 }
 
@@ -66,6 +71,7 @@ type openaiText struct {
 
 	client           *oai.Client
 	embeddingSpliter embeddingSpliter
+	rateLimiter      RateLimiter
 }
 
 func (o *openaiText) String(ctx context.Context, messages []string) (value string, err error) {
@@ -88,6 +94,11 @@ func (o *openaiText) String(ctx context.Context, messages []string) (value strin
 		Model:       config.Model,
 		Messages:    msgs,
 		Temperature: config.Temperature,
+	}
+
+	// 应用限流
+	if err := o.rateLimiter.Wait(ctx); err != nil {
+		return "", errors.Wrap(err, "rate limiter wait")
 	}
 
 	resp, err := o.client.CreateChatCompletion(ctx, req)
@@ -140,6 +151,11 @@ func (o *openaiText) Embedding(ctx context.Context, s string) (value []float32, 
 	if config.EmbeddingModel == "" {
 		return nil, errors.New("embedding model is not set")
 	}
+
+	if err := o.rateLimiter.Wait(ctx); err != nil {
+		return nil, errors.Wrap(err, "rate limiter wait")
+	}
+
 	vec, err := o.client.CreateEmbeddings(ctx, oai.EmbeddingRequest{
 		Input:          []string{s},
 		Model:          oai.EmbeddingModel(config.EmbeddingModel),

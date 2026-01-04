@@ -71,6 +71,7 @@ type Config struct {
 	APIKey                          string
 	Model, EmbeddingModel, TTSModel string
 	Temperature                     float32
+	RPM                             int // Requests per minute limit
 }
 
 type ProviderType string
@@ -200,6 +201,7 @@ func (c *FactoryConfig) From(app *config.App) {
 			EmbeddingModel: llm.EmbeddingModel,
 			TTSModel:       llm.TTSModel,
 			Temperature:    llm.Temperature,
+			RPM:            llm.RPM,
 		})
 	}
 }

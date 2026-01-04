@@ -36,7 +36,8 @@ import (
 type gemini struct {
 	*component.Base[Config, struct{}]
 	text
-	hc *http.Client
+	hc          *http.Client
+	rateLimiter RateLimiter
 
 	embeddingSpliter embeddingSpliter
 }
@@ -53,13 +54,17 @@ func newGemini(c *Config) LLM {
 		Config:   c,
 	})
 
+	rateLimiter := NewRateLimiter(c.RPM)
+
 	return &gemini{
 		Base: base,
 		text: &openaiText{
-			Base:   base,
-			client: client,
+			Base:        base,
+			client:      client,
+			rateLimiter: rateLimiter,
 		},
 		hc:               &http.Client{},
+		rateLimiter:      rateLimiter,
 		embeddingSpliter: embeddingSpliter,
 	}
 }
@@ -70,6 +75,11 @@ func (g *gemini) WAV(ctx context.Context, text string, speakers []Speaker) (r io
 
 	if g.Config().TTSModel == "" {
 		return nil, errors.New("tts model is not set")
+	}
+
+	// 应用限流
+	if err := g.rateLimiter.Wait(ctx); err != nil {
+		return nil, errors.Wrap(err, "rate limiter wait")
 	}
 
 	reqPayload, err := buildWAVRequestPayload(text, speakers)

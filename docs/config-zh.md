@@ -43,6 +43,7 @@
 | `llms[].embedding_model` | `string`  | LLM 的 Embedding 模型。例如 `text-embedding-3-small`。如果用于 Embedding，则不能为空。如果此 LLM 被使用，则不能与 `model` 同时为空。**注意：** 初次使用后请勿直接修改，应添加新的 LLM 配置。 |                    | 条件性必需                                     |
 | `llms[].tts_model`       | `string`  | LLM 的文本转语音 (TTS) 模型。                                                                                                                                                                |                    | 否                                             |
 | `llms[].temperature`     | `float32` | LLM 的温度 (0-2)。                                                                                                                                                                           | `0.0`              | 否                                             |
+| `llms[].rpm`             | `int`     | 每分钟请求数限制 (Requests Per Minute)。用于控制 API 调用频率，避免超过提供商的速率限制。`0` 表示不限流。                                          | `0`                | 否                                             |
 
 ### Jina AI 配置 (`jina`)
 

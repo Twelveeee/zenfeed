@@ -43,6 +43,7 @@ This section defines the list of available Large Language Models. At least one L
 | `llms[].embedding_model` | `string`  | Embedding model of the LLM. E.g., `text-embedding-3-small`. Cannot be empty if used for embedding. If this LLM is used, cannot be empty along with `model`. **Note:** Do not modify directly after initial use; add a new LLM configuration instead. |                             | Conditionally Required                                     |
 | `llms[].tts_model`       | `string`  | The Text-to-Speech (TTS) model of the LLM.                                                                                                                                                                                                           |                             | No                                                         |
 | `llms[].temperature`     | `float32` | Temperature of the LLM (0-2).                                                                                                                                                                                                                        | `0.0`                       | No                                                         |
+| `llms[].rpm`             | `int`     | Requests per minute limit. Controls API call frequency to avoid exceeding provider rate limits. `0` means no rate limiting.                                                  | `0`                         | No                                                         |
 
 ### Jina AI Configuration (`jina`)
 

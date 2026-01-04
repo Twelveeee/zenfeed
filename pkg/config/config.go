@@ -92,6 +92,7 @@ type LLM struct {
 	EmbeddingModel string  `yaml:"embedding_model,omitempty" json:"embedding_model,omitempty" desc:"The embedding model of the LLM. e.g. text-embedding-3-small. Can not be empty with model at same time when api.llm is set. NOTE: Once used, do not modify it directly, instead, add a new LLM configuration."`
 	TTSModel       string  `yaml:"tts_model,omitempty" json:"tts_model,omitempty" desc:"The TTS model of the LLM."`
 	Temperature    float32 `yaml:"temperature,omitempty" json:"temperature,omitempty" desc:"The temperature (0-2) of the LLM. Default: 0.0"`
+	RPM            int     `yaml:"rpm,omitempty" json:"rpm,omitempty" desc:"Requests per minute limit for this LLM. 0 means no limit. Default: 0"`
 }
 
 type Scrape struct {

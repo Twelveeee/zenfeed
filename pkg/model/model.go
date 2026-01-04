@@ -171,7 +171,10 @@ func (ls Labels) MarshalJSON() ([]byte, error) {
 		return nil, errors.Wrap(err, "write ending brace for Labels object")
 	}
 
-	return buf.Bytes(), nil
+	// Make a copy of the bytes before returning the buffer to the pool
+	result := make([]byte, buf.Len())
+	copy(result, buf.Bytes())
+	return result, nil
 }
 
 func (ls *Labels) UnmarshalJSON(data []byte) error {
