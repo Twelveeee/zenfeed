@@ -293,8 +293,10 @@ func (a *api) appendAccessKeyToURL(url string) string {
 		if strings.Contains(url, "?") {
 			return url + "&key=" + a.Config().RSSHubAccessKey
 		}
+
 		return url + "?key=" + a.Config().RSSHubAccessKey
 	}
+
 	return url
 }
 

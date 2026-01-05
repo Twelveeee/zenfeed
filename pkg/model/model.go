@@ -174,6 +174,7 @@ func (ls Labels) MarshalJSON() ([]byte, error) {
 	// Make a copy of the bytes before returning the buffer to the pool
 	result := make([]byte, buf.Len())
 	copy(result, buf.Bytes())
+
 	return result, nil
 }
 

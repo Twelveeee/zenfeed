@@ -77,7 +77,7 @@ func newTokenBucketRateLimiter(rpm int) RateLimiter {
 	}
 
 	// 初始化令牌桶,填满令牌
-	for i := 0; i < rpm; i++ {
+	for range rpm {
 		limiter.tokens <- struct{}{}
 	}
 
