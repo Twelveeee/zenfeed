@@ -111,19 +111,8 @@ func (t *tokenBucketRateLimiter) refillTokens() {
 
 // Wait 等待直到可以执行请求
 func (t *tokenBucketRateLimiter) Wait(ctx context.Context) error {
-	start := time.Now()
-	availableTokens := len(t.tokens)
-
-	log.Debug(ctx, "rate limiter waiting", "rpm", t.rpm, "available_tokens", availableTokens)
-
 	select {
 	case <-t.tokens:
-		elapsed := time.Since(start)
-		if elapsed > 100*time.Millisecond {
-			log.Info(ctx, "rate limiter wait completed", "rpm", t.rpm, "wait_duration", elapsed)
-		} else {
-			log.Debug(ctx, "rate limiter passed immediately", "rpm", t.rpm)
-		}
 		return nil
 	case <-ctx.Done():
 		return errors.Wrap(ctx.Err(), "rate limiter wait cancelled")
